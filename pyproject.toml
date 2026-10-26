@@ -1,0 +1,83 @@
+[project]
+name = "medstt"
+version = "0.1.0"
+description = "Medical speech-to-text: synthetic data and Cohere Transcribe fine-tuning on Slurm"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+  "torch>=2.5",
+  # Listed explicitly so that uv takes it from the ROCm index (sources only apply to direct deps).
+  "pytorch-triton-rocm; sys_platform == 'linux'",
+  "datasets>=3.0",
+  "accelerate>=1.0",
+  "huggingface-hub>=0.25",
+  "openai>=1.40",
+  "soundfile>=0.12",
+  "librosa>=0.10",
+  "sentencepiece>=0.2",
+  "protobuf>=4.25",
+  "soxr>=0.5",
+  "numpy>=1.26",
+  "jiwer>=3.0",
+  "pyyaml>=6.0",
+  "typer>=0.12",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+tensorboard = ["tensorboard>=2.17"]
+train = ["transformers>=5.4.0"]
+tts = ["qwen-tts==0.1.1", "torchaudio; sys_platform == 'linux'"]
+
+[project.scripts]
+medstt = "medstt.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "ruff==0.16.10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/medstt"]
+
+# Supported platforms: AMD GPU cluster nodes (Linux x86_64) and macOS for local development.
+[tool.uv]
+environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'darwin'",
+]
+conflicts = [[{ extra = "train" }, { extra = "tts" }]]
+
+# PyTorch for AMD GPUs comes from the PyTorch ROCm index on Linux.
+# Align the ROCm version in the URL with the driver installed on the cluster
+# (rocm6.4 ships torch <= 2.9; rocm7.x ships newer torch but needs a recent driver).
+[tool.uv.sources]
+torch = [{ index = "pytorch-rocm", marker = "sys_platform == 'linux'" }]
+pytorch-triton-rocm = [{ index = "pytorch-rocm", marker = "sys_platform == 'linux'" }]
+torchaudio = [{ index = "pytorch-rocm", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "RET", "D"]
+per-file-ignores = { "tests/**/*.py" = ["D"] }
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

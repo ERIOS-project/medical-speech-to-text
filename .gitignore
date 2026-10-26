@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-tts/
+venv/
+.env
+*.egg-info/
+.ipynb_checkpoints/
+
+# Generated data and audio
+/data/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+
+# Models
+models/
+*.pt
+*.bin
+*.safetensors
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+
+# Slurm logs
+slurm-logs/*
+!slurm-logs/.gitkeep
