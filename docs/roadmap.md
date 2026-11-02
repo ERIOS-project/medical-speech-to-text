@@ -32,7 +32,7 @@ Adapt Cohere Transcribe to the vocabulary of medical nomenclatures (CIM-10, Orph
 | Phase | Content | Status |
 | --- | --- | --- |
 | 0–2 | Workspace layout, `nomenclature import`, `words build` | Done |
-| 3 | `words split`, richer sentence prompt (`label`, `definition`, natural expression), ID warning, `sentences check`, *seen words, new sentences* set | Next |
+| 3 | `words split`, ID warning, `sentences check`, *seen words, new sentences* set (the richer sentence prompt with `label`, `definition`, and the natural expression is done) | Next |
 | 4 | `tts.voices` (6 descriptions), deterministic draw, `dataset check`, `dataset sample` | |
 | 5 | Shared inference (`CohereTranscriber`, batching, chunk joining for audio over 30 s), `medstt transcribe`, `inference:` section | |
 | 6 | `medstt dataset filter` (round-trip ASR), rejections excluded by `finalize_dataset`, `slurm/filter_dataset.sbatch` | |

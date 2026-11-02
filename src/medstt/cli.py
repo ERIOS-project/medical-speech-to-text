@@ -234,8 +234,8 @@ def sentences_generate(
     prompt_file: Annotated[
         Path | None,
         typer.Option(
-            help="User prompt template; placeholders: {word}, {domain}, "
-            "{min_words}, {max_words} and any column of the word list."
+            help="User prompt template; placeholders: {word}, {label}, {definition}, "
+            "{context}, {domain}, {min_words}, {max_words} and any column of the word list."
         ),
     ] = None,
     workdir: WorkdirOption = None,

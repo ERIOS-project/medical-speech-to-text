@@ -29,9 +29,17 @@ SYSTEM_PROMPT = (
 
 USER_PROMPT = (
     "Rédige une phrase naturelle en français, comme lors d'une dictée clinique "
-    "en {domain}, contenant le terme « {word} » écrit exactement ainsi. "
+    "en {domain}, contenant le mot « {word} » écrit exactement ainsi.\n"
+    "{context}\n"
+    "Emploie « {word} » avec les mots du libellé avec lesquels il forme une expression "
+    "habituelle (le nom complet d'une maladie, d'un signe ou d'un acte), sans recopier "
+    "le libellé entier s'il n'est pas naturel à l'oral. "
     "La phrase doit compter entre {min_words} et {max_words} mots."
 )
+
+#: Lines of ``{context}``, built from the ``label`` and ``definition`` columns when present.
+CONTEXT_LABEL = "Ce mot vient du libellé « {label} »."
+CONTEXT_DEFINITION = "Définition du concept : {definition}"
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 _LABEL_RE = re.compile(r"^(sentence|phrase)\s*:\s*", re.IGNORECASE)
@@ -152,19 +160,48 @@ async def _run(jobs, word_column, output_path, settings) -> tuple[int, int]:
     return counts["ok"], counts["failed"]
 
 
-async def _generate_one(client, word: str, record: dict[str, Any], settings) -> str | None:
-    """Retry one prompt until it yields a valid sentence or attempts run out."""
+def build_messages(
+    word: str, record: dict[str, Any], settings: GenerationSettings
+) -> list[dict[str, str]]:
+    """Fill the prompt templates for one word.
+
+    Placeholders are ``word``, ``domain``, ``min_words``, ``max_words``, every column of
+    the word record, and ``context``: the word's full label and the concept definition
+    when the record has them (``label`` and ``definition`` columns from ``words build``),
+    otherwise an empty string. Blank lines left by empty placeholders are removed.
+    """
+    label = str(record.get("label") or "").strip()
+    definition = str(record.get("definition") or "").strip()
+    context = []
+    if label and label.casefold() != word.casefold():
+        context.append(CONTEXT_LABEL.format(label=label))
+    if definition:
+        context.append(CONTEXT_DEFINITION.format(definition=definition))
     variables = {
         **{k: v for k, v in record.items() if isinstance(k, str)},
         "word": word,
+        "label": label or word,
+        "definition": definition,
+        "context": " ".join(context),
         "domain": settings.domain,
         "min_words": settings.min_words,
         "max_words": settings.max_words,
     }
-    messages = [
-        {"role": "system", "content": settings.system_prompt.format_map(variables)},
-        {"role": "user", "content": settings.user_prompt.format_map(variables)},
+    return [
+        {"role": "system", "content": _fill(settings.system_prompt, variables)},
+        {"role": "user", "content": _fill(settings.user_prompt, variables)},
     ]
+
+
+def _fill(template: str, variables: dict[str, Any]) -> str:
+    """Format a template and drop the blank lines left by empty placeholders."""
+    lines = [line.rstrip() for line in template.format_map(variables).splitlines()]
+    return "\n".join(line for line in lines if line).strip()
+
+
+async def _generate_one(client, word: str, record: dict[str, Any], settings) -> str | None:
+    """Retry one prompt until it yields a valid sentence or attempts run out."""
+    messages = build_messages(word, record, settings)
     reason = "no attempt"
     for attempt in range(settings.max_attempts):
         try:
