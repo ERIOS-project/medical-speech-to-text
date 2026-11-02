@@ -32,12 +32,12 @@ medstt nomenclature import orphanet   # one of them
 medstt nomenclature import --force    # download and normalize again
 ```
 
-The command needs network access. Downloads are kept in `<workdir>/nomenclature/raw/<name>/` and reused on later runs; the normalized file is `<workdir>/nomenclature/normalized/<name>.jsonl`. Prepare the workspace on a connected machine before copying it to an offline cluster.
+The command needs network access. Only the data file of each download is kept, as `<workdir>/nomenclature/raw/<name>.xml` (the archive and its other files are discarded), and reused on later runs; the normalized file is `<workdir>/nomenclature/normalized/<name>.jsonl`. Prepare the workspace on a connected machine before copying it to an offline cluster.
 
 ```text
 <workdir>/nomenclature/
-  raw/cim10/cim10fr2024syst_claml_20231215.zip   + extracted .xml
-  raw/orphanet/Orphanet_Nomenclature_Pack_FR.zip  + extracted pack
+  raw/cim10.xml        the ClaML file from the ATIH zip
+  raw/orphanet.xml     ORPHAnomenclature_fr_<year>.xml from the Orphanet pack
   normalized/cim10.jsonl
   normalized/orphanet.jsonl
 ```

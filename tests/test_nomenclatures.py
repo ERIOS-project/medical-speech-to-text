@@ -146,9 +146,10 @@ def test_fetch_downloads_once_and_extracts_the_single_xml(tmp_path, monkeypatch)
     data_file = fetch.fetch_source(tmp_path, spec)
     again = fetch.fetch_source(tmp_path, spec)
 
-    assert data_file == tmp_path / "orphanet" / "pack" / "data.xml" == again
+    assert data_file == tmp_path / "orphanet.xml" == again
+    assert data_file.read_text(encoding="utf-8") == ORPHANET
     assert calls == ["https://example.org/pack.zip"]
-    assert not list((tmp_path / "orphanet").glob("*.part"))
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["orphanet.xml"]
 
 
 def test_fetch_needs_file_when_several_xml(tmp_path, monkeypatch):
@@ -160,9 +161,11 @@ def test_fetch_needs_file_when_several_xml(tmp_path, monkeypatch):
         fetch.fetch_source(tmp_path, spec)
 
     chosen = fetch.fetch_source(tmp_path, NomenclatureSpec("o", "orphanet-xml", spec.url, "b*.xml"))
-    assert chosen.name == "b.xml"
+    assert chosen == tmp_path / "o.xml" and chosen.read_text(encoding="utf-8") == ORPHANET
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["o.xml"]
     with pytest.raises(FileNotFoundError, match="exactly one"):
-        fetch.fetch_source(tmp_path, NomenclatureSpec("o", "orphanet-xml", spec.url, "*.xml"))
+        fetch.fetch_source(tmp_path, NomenclatureSpec("o", "orphanet-xml", spec.url, "*.xml"), True)
+    assert chosen.read_text(encoding="utf-8") == ORPHANET  # the kept file survives a failed --force
 
 
 def test_import_writes_normalized_jsonl(tmp_path, monkeypatch):
@@ -171,6 +174,7 @@ def test_import_writes_normalized_jsonl(tmp_path, monkeypatch):
 
     output, count = import_nomenclature(tmp_path / "raw", tmp_path / "norm", spec)
 
+    assert (tmp_path / "raw" / "cim10.xml").is_file()
     rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
     assert count == 2 and len(rows) == 2
     assert rows[0] == {

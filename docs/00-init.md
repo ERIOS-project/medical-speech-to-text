@@ -35,7 +35,7 @@ medstt init "$MEDSTT_WORKDIR"
 ```text
 <workdir>/
   medstt.yaml       shared settings
-  nomenclature/     raw/ downloads and normalized/ JSONL nomenclatures
+  nomenclature/     raw/<name>.xml downloads and normalized/<name>.jsonl
   words/            word lists (JSONL)
   sentences/        sentence sets
   datasets/         audio datasets

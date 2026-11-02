@@ -32,7 +32,7 @@ CONFIG_TEMPLATE = """\
 # Workspace settings. Supported command-line options override matching values.
 
 # Source nomenclatures: `medstt nomenclature import` downloads each `url` into
-# nomenclature/raw/<name>/ and writes nomenclature/normalized/<name>.jsonl.
+# nomenclature/raw/<name>.xml and writes nomenclature/normalized/<name>.jsonl.
 # `file` (a glob) selects the data file when the archive contains several.
 nomenclatures:
   cim10:
