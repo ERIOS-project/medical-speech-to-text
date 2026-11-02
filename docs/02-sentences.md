@@ -1,9 +1,9 @@
 # 02 — Generate sentences
 
-Input: a term list under `<workdir>/words/`. The simplest format is a `.txt` file with one term per line; CSV, TSV, JSONL, JSON, and Parquet are also supported ([details](01-words.md)). An LLM served through an OpenAI-compatible API writes a clinical sentence for each term.
+Input: a word list under `<workdir>/words/`, normally the JSONL written by [`medstt words build`](01-words.md) (one object per word with its `code`, `label`, and `definition`). A `.txt` file with one term per line, or CSV, TSV, JSON, and Parquet with a `word` column, also work. An LLM served through an OpenAI-compatible API writes a clinical sentence for each term.
 
 ```bash
-medstt sentences generate cardio.txt -o cardio
+medstt sentences generate medical.jsonl -o medical
 ```
 
 The command uses `llm.base_url` and `llm.model` from [`medstt.yaml`](00-init.md); configure them for your LLM server before running it. The system and user prompts generate French sentences. The `sentences` section controls context, length, retry count, and `per_word`. Command-line options such as `--base-url`, `--model`, and `--per-word N` override the settings when needed. Use `--limit N` for the first N input rows and `--concurrency` for parallel requests.
@@ -12,7 +12,7 @@ The command uses `llm.base_url` and `llm.model` from [`medstt.yaml`](00-init.md)
 
 Each reply is cleaned and checked: the term must occur regardless of case and accents, and the sentence must have between `min_words` and `max_words` words. Generation is retried up to `max_attempts` times. Failed items are not written and will be tried again on the next run.
 
-Output: `<workdir>/sentences/cardio.jsonl`, **not a `.txt` file**. Each JSONL line is a JSON object with `id`, `word`, `text` (the generated sentence), `llm`, and the other input columns. Existing records are skipped when the command is rerun. For example:
+Output: `<workdir>/sentences/medical.jsonl`, **not a `.txt` file**. Each JSONL line is a JSON object with `id`, `word`, `text` (the generated sentence), `llm`, and the other input columns. Existing records are skipped when the command is rerun. For example:
 
 ```json
 {"id":"000000-0","word":"péricardite","text":"Le patient présente une péricardite aiguë depuis ce matin.","llm":"<model-name>"}

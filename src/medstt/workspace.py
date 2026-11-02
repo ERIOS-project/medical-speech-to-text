@@ -17,7 +17,8 @@ import yaml
 WORKDIR_ENV = "MEDSTT_WORKDIR"
 CONFIG_FILENAME = "medstt.yaml"
 SUBDIRS = (
-    "nomenclature",
+    "nomenclature/raw",
+    "nomenclature/normalized",
     "words",
     "sentences",
     "datasets",
@@ -29,6 +30,31 @@ SUBDIRS = (
 
 CONFIG_TEMPLATE = """\
 # Workspace settings. Supported command-line options override matching values.
+
+# Source nomenclatures: `medstt nomenclature import` downloads each `url` into
+# nomenclature/raw/<name>/ and writes nomenclature/normalized/<name>.jsonl.
+# `file` (a glob) selects the data file when the archive contains several.
+nomenclatures:
+  cim10:
+    format: cim10-claml
+    url: https://www.atih.sante.fr/sites/default/files/content/documents/cim10fr2024syst_claml_20231215.zip
+  orphanet:
+    format: orphanet-xml
+    url: https://www.orphacode.org/data/packs/Orphanet_Nomenclature_Pack_FR.zip
+    file: ORPHAnomenclature_fr_*.xml
+
+# Rare words: `medstt words build` reads the normalized nomenclatures and keeps,
+# for each concept, the words that are rare in general French.
+words:
+  # Normalized nomenclatures to read (default: every configured nomenclature).
+  sources: [cim10, orphanet]
+  # Name of the output list, written to words/<output>.jsonl.
+  output: medical
+  # A word is rare when its Zipf frequency in French is at most this value
+  # (7 = extremely common, 4 = common, 2 = rare, 0 = unknown to the lexicon).
+  max_zipf: 3.0
+  # Minimum number of letters for a candidate word.
+  min_length: 4
 
 llm:
   # Any OpenAI-compatible endpoint (vLLM, TGI, LiteLLM, ...).

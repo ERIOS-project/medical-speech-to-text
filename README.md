@@ -7,7 +7,8 @@ This project builds a synthetic speech dataset from medical terms and fine-tunes
 | Step | What happens | Output |
 | --- | --- | --- |
 | [00 — Initialize](docs/00-init.md) | Create the workspace and configure `medstt.yaml`. | Workspace directories and settings |
-| [01 — Medical terms](docs/01-words.md) | Provide a term list. **TODO:** extract terms from a nomenclature. | `words/` |
+| [01a — Nomenclatures](docs/01-nomenclatures.md) | Download CIM-10 and Orphanet and normalize them into one JSONL format. | `nomenclature/normalized/*.jsonl` |
+| [01b — Medical words](docs/01-words.md) | Keep, for each concept, the words that are rare in general French, with the concept as context. | `words/*.jsonl` |
 | [02 — Sentences](docs/02-sentences.md) | Ask an LLM to write and validate a sentence for each term. | `sentences/*.jsonl` |
 | [03 — Synthetic speech](docs/03-tts.md) | Generate one male and one female recording per sentence with Qwen3-TTS VoiceDesign. | `datasets/` (WAV files and metadata) |
 | [04 — Training](docs/04-train.md) | Train all Cohere Transcribe weights, optionally mixing in existing French speech datasets. | `runs/<run_name>/final/` (model and processor) |
@@ -19,6 +20,7 @@ You can start with a manually prepared term list, sentence file, or audio datase
 
 - Python 3.10–3.13.
 - Linux x86_64 with a compatible AMD ROCm driver for GPU training, or macOS for local development. Check the ROCm index in `pyproject.toml` against your cluster's driver.
+- Network access on the machine that imports the nomenclatures (ATIH, Orphanet).
 - Access to an OpenAI-compatible LLM endpoint for sentence generation. Audio synthesis uses the local Qwen3-TTS VoiceDesign model through its Python library.
 - A Hugging Face account with access to the gated Cohere Transcribe model, plus a token for downloading it before offline training.
 
