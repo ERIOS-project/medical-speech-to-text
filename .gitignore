@@ -34,3 +34,6 @@ models/
 # Slurm logs
 slurm-logs/*
 !slurm-logs/.gitkeep
+
+# Local workspace (medstt init) and its data
+workdir/

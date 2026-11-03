@@ -1,6 +1,6 @@
-# 03 — Generate synthetic speech
+# 04 — Generate synthetic speech
 
-This step turns a [sentence file](02-sentences.md) into an [AudioFolder dataset](datasets.md). It uses the Python `qwen-tts` library directly with the fixed [Qwen3-TTS-12Hz-1.7B-VoiceDesign model](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign). Each sentence is synthesized **once with a male voice and once with a female voice**. There is no audio repeat setting or TTS endpoint.
+This step turns a [sentence file](03-sentences.md) into an [AudioFolder dataset](datasets.md). It uses the Python `qwen-tts` library directly with the fixed [Qwen3-TTS-12Hz-1.7B-VoiceDesign model](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign). Each sentence is synthesized **once with a male voice and once with a female voice**. There is no audio repeat setting or TTS endpoint.
 
 ## Install the TTS environment
 

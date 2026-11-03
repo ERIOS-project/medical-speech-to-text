@@ -1,24 +1,16 @@
 # TODO
 
-## Phase 0 — words from a nomenclature
+The design decisions and the planned phases are in [docs/roadmap.md](docs/roadmap.md). Open points:
 
-`medstt words from-nomenclature` is a stub (`src/medstt/words/nomenclature.py`).
-To define before implementing:
+## Words
 
-- [ ] Source nomenclatures and formats (e.g. CCAM, CIM-10, SNOMED CT, LOINC, drug lists).
-- [ ] Selection rules: which entries become words (preferred labels, synonyms, abbreviations).
-- [ ] Granularity: single terms vs. multi-word expressions; splitting of long labels.
-- [ ] Filtering: drop terms already well recognized by the baseline model (measure the
-      baseline term recall first), deduplicate, normalize case and accents.
-- [ ] Pronunciation issues: acronyms (spelled vs. read), numbers, units, dosages.
-- [ ] Columns kept for the prompt (code, category, definition) to get realistic contexts.
+- [ ] Calibrate `words.max_zipf` on the `--stats` output and on a sample of `words/*.jsonl` (ordinary words slipping through vs. medical words dropped).
+- [ ] Decide which source-specific fields (`extra`) are worth passing to the sentence prompt.
+- [ ] Add the CHU de Montpellier vocabulary (directory export + manual CSV); decide how acronyms and proper names are spelled out for the TTS.
+- [ ] Consider further sources once the licence is checked: French MeSH (Loterre), BDPM drug names.
 
 ## Evaluation
 
-`medstt evaluate` is a stub (`src/medstt/eval/evaluate.py`). To define before implementing:
+`medstt evaluate` is a stub (`src/medstt/eval/evaluate.py`); see the roadmap for the planned protocol (held-out words, FLEURS fr, term recall, comparison with the base model).
 
-- [ ] Test sets: synthetic held-out split (by word, to measure unseen terms) and
-      public general French speech to detect forgetting.
-- [ ] Metrics: WER/CER, text normalization rules, medical term recall / term error rate.
-- [ ] Baseline: the pretrained model before fine-tuning, on the same test sets.
-- [ ] Report format (per dataset, per term) and Slurm script.
+- [ ] Verify on the cluster that training (BOS + prompt) and generation (bare prompt) agree on `decoder_start_token_id` before relying on evaluation numbers.
