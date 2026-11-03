@@ -1,4 +1,4 @@
-# 04 — Train Cohere Transcribe
+# 05 — Train Cohere Transcribe
 
 This step fine-tunes **all weights** of [`CohereLabs/cohere-transcribe-03-2026`](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) on French audio and transcripts. The model and language are fixed in code.
 
@@ -53,4 +53,4 @@ medstt train --resume  # Continue the latest checkpoint of this run
 
 For `run_name: cohere-medical`, the **trained model and processor** are saved in **`<workdir>/runs/cohere-medical/final/`**. This is the directory to load for inference. Intermediate checkpoints are in `<workdir>/runs/cohere-medical/checkpoint-*`; `train_results.json`, `eval_results.json`, and a copy of the `train` settings (`train_config.yaml`) are in the run directory.
 
-The model receives a French decoder prompt. Evaluation generates without the reference transcript and reports WER and CER; when evaluation data is available, the best checkpoint is selected by WER. For multiple GPUs, use the [Slurm script](slurm.md#training). Standalone evaluation remains [TODO](05-evaluate.md).
+The model receives a French decoder prompt. Evaluation generates without the reference transcript and reports WER and CER; when evaluation data is available, the best checkpoint is selected by WER. For multiple GPUs, use the [Slurm script](slurm.md#training). Standalone evaluation remains [TODO](06-evaluate.md).

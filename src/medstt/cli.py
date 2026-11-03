@@ -16,8 +16,18 @@ import typer
 
 from medstt.eval.evaluate import evaluate_model
 from medstt.io import read_records
-from medstt.sentences.generate import USER_PROMPT, GenerationSettings, generate_sentences
-from medstt.words.nomenclature import extract_words
+from medstt.nomenclatures.config import parse_nomenclatures
+from medstt.nomenclatures.normalize import import_nomenclature
+from medstt.sentences.generate import (
+    DEFAULT_FORMS,
+    DEFAULT_SCENES,
+    DEFAULT_SUBJECTS,
+    USER_PROMPT,
+    GenerationSettings,
+    generate_sentences,
+)
+from medstt.words.build import build_words
+from medstt.words.rarity import RaritySettings
 from medstt.workspace import Workspace, WorkspaceError, pick
 
 app = typer.Typer(
@@ -25,11 +35,15 @@ app = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_show_locals=False,
 )
-words_app = typer.Typer(help="Phase 0: build word lists.", no_args_is_help=True)
+nomenclature_app = typer.Typer(
+    help="Phase 0: download and normalize source nomenclatures.", no_args_is_help=True
+)
+words_app = typer.Typer(help="Phase 1: select rare medical words.", no_args_is_help=True)
 sentences_app = typer.Typer(help="Phase 1: generate sentences from words.", no_args_is_help=True)
 tts_app = typer.Typer(help="Phase 2: synthesize audio datasets.", no_args_is_help=True)
 dataset_app = typer.Typer(help="Import, finalize and inspect audio datasets.", no_args_is_help=True)
 model_app = typer.Typer(help="Download models for offline use.", no_args_is_help=True)
+app.add_typer(nomenclature_app, name="nomenclature")
 app.add_typer(words_app, name="words")
 app.add_typer(sentences_app, name="sentences")
 app.add_typer(tts_app, name="tts")
@@ -100,24 +114,103 @@ def init(
     typer.echo(f"Workspace ready: {ws.root}\nEdit {ws.root / 'medstt.yaml'} to configure it.")
 
 
-# Medical terms
+# Nomenclatures
 
 
-@words_app.command("from-nomenclature")
-def words_from_nomenclature(
-    nomenclature: Annotated[Path, typer.Argument(help="Nomenclature file (in nomenclature/).")],
-    output: Annotated[str, typer.Option("--output", "-o", help="Name of the word list.")],
+def _nomenclature_specs(ws: Workspace, names: list[str] | None):
+    """Return the configured nomenclatures, restricted to ``names`` when given."""
+    try:
+        specs = parse_nomenclatures(ws.section("nomenclatures"))
+    except ValueError as error:
+        raise typer.BadParameter(str(error), param_hint="nomenclatures") from error
+    if not specs:
+        raise typer.BadParameter(
+            "No nomenclature configured; add a `nomenclatures` section to medstt.yaml.",
+            param_hint="nomenclatures",
+        )
+    if names:
+        known = {spec.name: spec for spec in specs}
+        missing = [name for name in names if name not in known]
+        if missing:
+            raise typer.BadParameter(
+                f"Unknown nomenclature(s) {missing}; configured: {sorted(known)}.",
+                param_hint="NAMES",
+            )
+        specs = [known[name] for name in names]
+    return specs
+
+
+@nomenclature_app.command("import")
+def nomenclature_import(
+    names: Annotated[
+        list[str] | None,
+        typer.Argument(help="Nomenclatures to import (default: all configured)."),
+    ] = None,
+    force: Annotated[bool, typer.Option(help="Download and normalize again.")] = False,
     workdir: WorkdirOption = None,
 ) -> None:
-    """[TODO] Extract medical terms from a nomenclature file."""
+    """Download each configured nomenclature and write its normalized JSONL."""
     ws = _open(workdir)
-    try:
-        extract_words(
-            ws.resolve(nomenclature, "nomenclature"), _output_path(ws, output, "words", ".csv")
+    raw_root, normalized_root = ws.subdir("nomenclature/raw"), ws.subdir("nomenclature/normalized")
+    for spec in _nomenclature_specs(ws, names):
+        try:
+            output, count = import_nomenclature(raw_root, normalized_root, spec, force=force)
+        except (OSError, ValueError) as error:
+            typer.echo(f"{spec.name}: {error}", err=True)
+            raise typer.Exit(code=1) from error
+        typer.echo(f"{spec.name}: {count} concepts written to {output}")
+
+
+# Rare words
+
+
+@words_app.command("build")
+def words_build(
+    sources: Annotated[
+        list[str] | None,
+        typer.Argument(help="Normalized nomenclatures to read (overrides words.sources)."),
+    ] = None,
+    output: Annotated[
+        str | None, typer.Option("--output", "-o", help="Word list name (overrides words.output).")
+    ] = None,
+    max_zipf: Annotated[
+        float | None, typer.Option(help="Keep words with a French Zipf frequency <= this.")
+    ] = None,
+    min_length: Annotated[int | None, typer.Option(help="Minimum letters per word.")] = None,
+    limit: Annotated[
+        int | None, typer.Option(help="Only read the first N concepts per source.")
+    ] = None,
+    stats: Annotated[bool, typer.Option(help="Print counts and the Zipf histogram.")] = False,
+    workdir: WorkdirOption = None,
+) -> None:
+    """Keep the rare words of each concept and write them to ``words/<output>.jsonl``."""
+    ws = _open(workdir)
+    conf = ws.section("words")
+    configured = [spec.name for spec in parse_nomenclatures(ws.section("nomenclatures"))]
+    names = list(sources or pick(None, conf, "sources", configured))
+    if not names:
+        raise typer.BadParameter(
+            "No source given and words.sources is empty.", param_hint="SOURCES"
         )
-    except NotImplementedError as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(2) from error
+    normalized_root = ws.subdir("nomenclature/normalized")
+    paths = []
+    for name in names:
+        path = normalized_root / f"{name}.jsonl"
+        if not path.is_file():
+            raise typer.BadParameter(
+                f"{path} not found; run `medstt nomenclature import {name}` first.",
+                param_hint="SOURCES",
+            )
+        paths.append((name, path))
+    settings = RaritySettings(
+        max_zipf=float(pick(max_zipf, conf, "max_zipf", 3.0)),
+        min_length=int(pick(min_length, conf, "min_length", 4)),
+    )
+    output_path = _output_path(ws, pick(output, conf, "output", "words"), "words", ".jsonl")
+    count, build_stats = build_words(paths, output_path, settings, limit=limit)
+    if stats:
+        typer.echo(build_stats.report(settings.max_zipf))
+    typer.echo(f"{count} words written to {output_path}")
 
 
 # Sentences
@@ -126,11 +219,18 @@ def words_from_nomenclature(
 @sentences_app.command("generate")
 def sentences_generate(
     words: Annotated[
-        Path, typer.Argument(help="Word list: txt/csv/tsv/jsonl/parquet (in words/).")
-    ],
+        Path | None,
+        typer.Argument(
+            help="Word list: txt/csv/tsv/jsonl/parquet (in words/); "
+            "default: words/<words.output>.jsonl."
+        ),
+    ] = None,
     output: Annotated[
-        str, typer.Option("--output", "-o", help="Sentence set name (in sentences/).")
-    ],
+        str | None,
+        typer.Option(
+            "--output", "-o", help="Sentence set name (in sentences/); default: sentences.output."
+        ),
+    ] = None,
     column: Annotated[
         str, typer.Option(help="Word column (txt files: one word per line).")
     ] = "word",
@@ -148,8 +248,8 @@ def sentences_generate(
     prompt_file: Annotated[
         Path | None,
         typer.Option(
-            help="User prompt template; placeholders: {word}, {domain}, "
-            "{min_words}, {max_words} and any column of the word list."
+            help="User prompt template; placeholders: {word}, {label}, {definition}, "
+            "{context}, {domain}, {min_words}, {max_words} and any column of the word list."
         ),
     ] = None,
     workdir: WorkdirOption = None,
@@ -157,7 +257,10 @@ def sentences_generate(
     """Generate the configured number of French sentences per term; resume by ID."""
     ws = _open(workdir)
     llm, conf = ws.section("llm"), ws.section("sentences")
+    if words is None:
+        words = Path(ws.section("words").get("output", "words")).with_suffix(".jsonl")
     words_path = ws.resolve(words, "words")
+    output = pick(output, conf, "output", "sentences")
     records = read_records(words_path, txt_column=column)
     if limit is not None:
         records = records[:limit]
@@ -191,6 +294,9 @@ def sentences_generate(
         per_word=sentences_per_word,
         user_prompt=prompt_file.read_text(encoding="utf-8") if prompt_file else USER_PROMPT,
         extra_body=llm.get("extra_body") or None,
+        scenes=tuple(conf.get("scenes", DEFAULT_SCENES) or ()),
+        forms=tuple(conf.get("forms", DEFAULT_FORMS) or ()),
+        subjects=tuple(conf.get("subjects", DEFAULT_SUBJECTS) or ()),
     )
     if not settings.base_url or not settings.model:
         raise typer.BadParameter("Set llm.base_url and llm.model in medstt.yaml or via options.")

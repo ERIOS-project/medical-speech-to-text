@@ -17,7 +17,8 @@ import yaml
 WORKDIR_ENV = "MEDSTT_WORKDIR"
 CONFIG_FILENAME = "medstt.yaml"
 SUBDIRS = (
-    "nomenclature",
+    "nomenclature/raw",
+    "nomenclature/normalized",
     "words",
     "sentences",
     "datasets",
@@ -29,6 +30,31 @@ SUBDIRS = (
 
 CONFIG_TEMPLATE = """\
 # Workspace settings. Supported command-line options override matching values.
+
+# Source nomenclatures: `medstt nomenclature import` downloads each `url` into
+# nomenclature/raw/<name>.xml and writes nomenclature/normalized/<name>.jsonl.
+# `file` (a glob) selects the data file when the archive contains several.
+nomenclatures:
+  cim10:
+    format: cim10-claml
+    url: https://www.atih.sante.fr/sites/default/files/content/documents/cim10fr2024syst_claml_20231215.zip
+  orphanet:
+    format: orphanet-xml
+    url: https://www.orphacode.org/data/packs/Orphanet_Nomenclature_Pack_FR.zip
+    file: ORPHAnomenclature_fr_*.xml
+
+# Rare words: `medstt words build` reads the normalized nomenclatures and keeps,
+# for each concept, the words that are rare in general French.
+words:
+  # Normalized nomenclatures to read (default: every configured nomenclature).
+  sources: [cim10, orphanet]
+  # Name of the output list, written to words/<output>.jsonl.
+  output: words
+  # A word is rare when its Zipf frequency in French is at most this value
+  # (7 = extremely common, 4 = common, 2 = rare, 0 = unknown to the lexicon).
+  max_zipf: 3.0
+  # Minimum number of letters for a candidate word.
+  min_length: 4
 
 llm:
   # Any OpenAI-compatible endpoint (vLLM, TGI, LiteLLM, ...).
@@ -47,12 +73,45 @@ llm:
   extra_body: {}
 
 sentences:
+  # Name of the sentence set, written to sentences/<output>.jsonl.
+  output: sentences
   domain: pratique clinique hospitalière
   # Number of different sentences requested for each term.
   per_word: 1
   min_words: 8
   max_words: 20
   max_attempts: 4
+  # Every sentence draws one entry of each list from its ID (deterministic), so that
+  # the LLM does not write the same sentence shape every time. Edit freely; an empty
+  # list adds no constraint.
+  scenes:
+    - compte rendu d'hospitalisation dicté
+    - courrier au médecin traitant
+    - transmission infirmière
+    - observation aux urgences
+    - consultation de suivi
+    - staff ou réunion de concertation
+    - échange oral entre deux soignants
+    - compte rendu d'examen (imagerie, biologie, anatomopathologie)
+    - entretien avec le patient ou sa famille
+  forms:
+    - affirmation d'un diagnostic
+    - hypothèse à confirmer
+    - diagnostic écarté ou absent
+    - antécédent ancien
+    - question posée à un confrère
+    - consigne de traitement ou de surveillance
+    - résultat d'examen
+    - évolution sous traitement
+  subjects:
+    - le patient
+    - la patiente
+    - l'enfant
+    - une femme de soixante ans
+    - un homme jeune
+    - je, le soignant qui parle
+    - nous, l'équipe
+    - personne en particulier, formulation impersonnelle
 
 tts:
   # Fixed model: Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign.

@@ -1,1 +1,1 @@
-"""Medical term extraction is planned; manual term lists work now."""
+"""Select the rare medical words of normalized nomenclatures."""

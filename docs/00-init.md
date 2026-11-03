@@ -35,8 +35,8 @@ medstt init "$MEDSTT_WORKDIR"
 ```text
 <workdir>/
   medstt.yaml       shared settings
-  nomenclature/     source nomenclatures
-  words/            term lists
+  nomenclature/     raw/<name>.xml downloads and normalized/<name>.jsonl
+  words/            word lists (JSONL)
   sentences/        sentence sets
   datasets/         audio datasets
   models/           local models
@@ -51,16 +51,21 @@ medstt init "$MEDSTT_WORKDIR"
 
 | Section | Key | Purpose / initial value |
 | --- | --- | --- |
+| `nomenclatures` | `<name>.format`, `<name>.url`, `<name>.file` | Importer format and download URL of each source nomenclature; `file` is a glob selecting the data file inside an archive. Initially `cim10` (ATIH ClaML) and `orphanet` (nomenclature pack FR) |
+| `words` | `sources`, `output` | Normalized nomenclatures to read (`[cim10, orphanet]`) and name of the word list (`words`, written to `words/words.jsonl`) |
+| `words` | `max_zipf`, `min_length` | A word is kept when its French Zipf frequency is at most `3.0` and it has at least `4` letters |
 | `llm` | `base_url` | OpenAI-compatible endpoint, `http://localhost:8000/v1` |
 | `llm` | `model` | LLM name, initially `mistralai/Mistral-Small-3.2-24B-Instruct-2506` |
 | `llm` | `api_key_env`, `api_key` | Environment variable name (`MEDSTT_LLM_API_KEY`) and fallback key (`null`) |
 | `llm` | `temperature`, `max_tokens` | Generation settings, `0.8` and `200` |
 | `llm` | `concurrency`, `timeout` | Parallel requests (`16`) and request timeout in seconds (`120`) |
 | `llm` | `extra_body` | Additional fields forwarded to the server, `{}` |
+| `sentences` | `output` | Name of the sentence set (`sentences`, written to `sentences/sentences.jsonl`) |
 | `sentences` | `domain` | Prompt context (`pratique clinique hospitalière`); sentences are generated in French |
 | `sentences` | `per_word` | Number of separate LLM requests and sentences for each term, `1` by default |
 | `sentences` | `min_words`, `max_words` | Accepted sentence length, `8` to `20` words |
 | `sentences` | `max_attempts` | Maximum attempts per sentence, `4` |
+| `sentences` | `scenes`, `forms`, `subjects` | Lists drawn from for every sentence (one entry each, chosen from the sentence ID) to vary the setting, what the sentence expresses, and its subject; an empty list adds no constraint |
 | `tts` | `voice_prompts.male`, `voice_prompts.female` | Two French descriptions for Qwen3-TTS VoiceDesign; one audio per description and sentence |
 | `tts` | `hf_token` | Optional Hugging Face token (`null`); `HF_TOKEN` takes precedence |
 | `tts` | `sampling_rate` | Output WAV sampling rate, `16000` Hz |
@@ -94,8 +99,8 @@ train:
     max_label_tokens: 256
 ```
 
-Each path must point to an [AudioFolder or saved Hugging Face dataset](datasets.md). The same `seed` gives repeatable random choices with the same data and setup; changing it can change the held-out samples and training order. See [Train](04-train.md) for the command and output files.
+Each path must point to an [AudioFolder or saved Hugging Face dataset](datasets.md). The same `seed` gives repeatable random choices with the same data and setup; changing it can change the held-out samples and training order. See [Train](05-train.md) for the command and output files.
 
 For the LLM endpoint, the API key comes from `--api-key`, then the variable named by `llm.api_key_env`, then `llm.api_key`. If none is set, the client sends `EMPTY`, which some local servers accept. Prefer an environment variable for a real key.
 
-The [Sentences](02-sentences.md), [TTS](03-tts.md), and [Train](04-train.md) guides show how these settings are used. The trained model is saved under `runs/<run_name>/final/`.
+The [Nomenclatures](01-nomenclatures.md), [Words](02-words.md), [Sentences](03-sentences.md), [TTS](04-tts.md), and [Train](05-train.md) guides show how these settings are used. The trained model is saved under `runs/<run_name>/final/`.
