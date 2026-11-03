@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 from medstt.cli import app
 from medstt.io import append_jsonl
 from medstt.words import build, rarity
-from medstt.words.rarity import RaritySettings, candidate_words, rare_words
+from medstt.words.rarity import RaritySettings, candidate_tokens, candidate_words, rare_words
 from medstt.workspace import Workspace
 
 FREQUENCIES = {
@@ -28,7 +28,6 @@ FREQUENCIES = {
 @pytest.fixture(autouse=True)
 def fake_lexicon(monkeypatch):
     monkeypatch.setattr(rarity, "zipf_frequency", lambda word, lang: FREQUENCIES.get(word, 0.0))
-    monkeypatch.setattr(build, "zipf", rarity.zipf)
 
 
 def test_candidate_words_normalizes_and_filters():
@@ -111,7 +110,9 @@ def test_build_keeps_each_word_once_with_its_first_concept(tmp_path):
 
     rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
     assert count == 3
-    assert [row["word"] for row in rows] == ["choléra", "péricardite", "varioliforme"]
+    # « Péricardite » keeps its capital: the fixture only writes it capitalized, away from
+    # the first word of the synonym.
+    assert [row["word"] for row in rows] == ["choléra", "Péricardite", "varioliforme"]
     assert rows[0]["code"] == "A00.0" and rows[0]["definition"] == "Def A"
     assert rows[1]["label"] == "Maladie infectieuse à Péricardite"
     assert rows[1]["extra"] == {"chapter": "A", "label": "Choléra classique"}
@@ -160,3 +161,51 @@ def test_cli_build_uses_yaml_sources_and_output(tmp_path):
 
     missing = CliRunner().invoke(app, ["words", "build", "orphanet", "--workdir", str(ws.root)])
     assert missing.exit_code != 0 and "nomenclature import orphanet" in missing.output
+
+
+def test_score_uses_the_lemma_frequency_when_higher(monkeypatch):
+    lexicon = {"précisées": 2.95, "préciser": 4.36, "infections": 4.5, "shigelloses": 0.0}
+    monkeypatch.setattr(rarity, "zipf_frequency", lambda word, lang: lexicon.get(word, 0.0))
+    monkeypatch.setattr(rarity, "lemmatize", lambda word: {"précisées": "préciser"}.get(word, word))
+
+    precisees = rarity.score_word("précisées")
+    assert (precisees.lemma, precisees.score, precisees.lemmatized) == ("préciser", 4.36, True)
+    unknown = rarity.score_word("shigelloses")
+    assert (unknown.lemma, unknown.score, unknown.lemmatized) == ("shigelloses", 0.0, False)
+    assert rare_words("Autres infections précisées, shigelloses", RaritySettings(3.0)) == [
+        ("shigelloses", 0.0)
+    ]
+
+
+def test_real_lemmatizer_keeps_unknown_medical_words():
+    assert rarity.lemmatize("varioliforme") == "varioliforme"
+    assert rarity.lemmatize("précisées") == "préciser"
+
+
+def test_candidate_tokens_keep_the_label_spelling_and_position():
+    tokens = candidate_tokens("Sepsis à Salmonella SAI", min_length=3)
+    assert [(t.text, t.word, t.initial) for t in tokens] == [
+        ("Sepsis", "sepsis", True),
+        ("Salmonella", "salmonella", False),
+        ("SAI", "sai", False),
+    ]
+    assert tokens[0].capitalized and tokens[1].capitalized
+
+
+def test_build_keeps_capitals_written_away_from_the_first_word(tmp_path):
+    cim10 = _normalized(
+        tmp_path / "cim10.jsonl",
+        [
+            {"code": "A02.1", "source": "cim10", "label": "Sepsis à Salmonella", "synonyms": []},
+            {"code": "A00.9", "source": "cim10", "label": "Choléra classique", "synonyms": []},
+            {"code": "K50.9", "source": "cim10", "label": "Maladie de Crohn", "synonyms": []},
+            {"code": "A01.0", "source": "cim10", "label": "Fièvre due au choléra", "synonyms": []},
+        ],
+    )
+    output = tmp_path / "out.jsonl"
+
+    build.build_words([("cim10", cim10)], output, RaritySettings(max_zipf=3.0))
+
+    words = {json.loads(line)["word"] for line in output.read_text(encoding="utf-8").splitlines()}
+    assert {"Salmonella", "Crohn", "choléra"} <= words
+    assert "Choléra" not in words and "Sepsis" not in words

@@ -1539,6 +1539,7 @@ dependencies = [
     { name = "pytorch-triton-rocm", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
     { name = "pyyaml", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
     { name = "sentencepiece", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
+    { name = "simplemma", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
     { name = "soundfile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
     { name = "soxr", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
     { name = "torch", version = "2.9.1+rocm6.4", source = { registry = "https://download.pytorch.org/whl/rocm6.4" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts') or (sys_platform != 'linux' and extra == 'extra-6-medstt-train' and extra == 'extra-6-medstt-tts')" },
@@ -1580,6 +1581,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "qwen-tts", marker = "extra == 'tts'", specifier = "==0.1.1" },
     { name = "sentencepiece", specifier = ">=0.2" },
+    { name = "simplemma", specifier = ">=1.1" },
     { name = "soundfile", specifier = ">=0.12" },
     { name = "soxr", specifier = ">=0.5" },
     { name = "tensorboard", marker = "extra == 'tensorboard'", specifier = ">=2.17" },
@@ -3441,6 +3443,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
+name = "simplemma"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/bf/c5f923da5eb468c6d4a86c6b3250ef92470a0d31bb51cd7d2fbbea22b7c0/simplemma-2.0.0.tar.gz", hash = "sha256:03f9ba792aa51ebbe18a78fc3138c0c0087d81b284eefa534f6f2015233dcb8d", size = 19084504, upload-time = "2026-08-12T13:48:07.179Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/e4/078d18631ce1c012af0f25e753f473745c0b139757334175a76d6b910c82/simplemma-2.0.0-py3-none-any.whl", hash = "sha256:db33b15f5aed6485a748ce34d1f510ca760af2633289ab9a8493e2afa785c352", size = 18954708, upload-time = "2026-08-12T13:47:55.162Z" },
 ]
 
 [[package]]

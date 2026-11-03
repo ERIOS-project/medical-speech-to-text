@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+import simplemma
 from wordfreq import zipf_frequency
 
 from medstt.text import strip_accents
@@ -36,18 +37,34 @@ class RaritySettings:
     min_length: int = 4
 
 
-def candidate_words(text: str, min_length: int = 4) -> list[str]:
-    """Return the lowercased words of ``text`` worth scoring, in order, without repeats.
+@dataclass(frozen=True)
+class Token:
+    """A candidate word as written in a label, with its lowercase form."""
+
+    text: str
+    word: str
+    #: First word of the label: its capital may only be sentence case.
+    initial: bool
+
+    @property
+    def capitalized(self) -> bool:
+        """Whether the label writes the word with at least one capital letter."""
+        return self.text != self.word
+
+
+def candidate_tokens(text: str, min_length: int = 4) -> list[Token]:
+    """Return the words of ``text`` worth scoring, in order, without repeats.
 
     Hyphenated tokens are split into their parts: nomenclatures (Orphanet in
     particular) use hyphens to chain whole phrases, as in
     « dysplasie épiphysaire multiple-macrocéphalie-dysmorphie faciale ».
     """
     seen: set[str] = set()
-    words: list[str] = []
-    for match in _WORD_RE.finditer(text):
-        token = _ELISION_RE.sub("", match.group(0)).lower().replace("’", "'")
-        for word in token.split("-"):
+    tokens: list[Token] = []
+    for index, match in enumerate(_WORD_RE.finditer(text)):
+        token = _ELISION_RE.sub("", match.group(0)).replace("’", "'")
+        for part, piece in enumerate(token.split("-")):
+            word = piece.lower()
             key = strip_accents(word)
             if (
                 len(key.replace("'", "")) < min_length
@@ -57,8 +74,33 @@ def candidate_words(text: str, min_length: int = 4) -> list[str]:
             ):
                 continue
             seen.add(key)
-            words.append(word)
-    return words
+            tokens.append(Token(piece, word, index == 0 and part == 0))
+    return tokens
+
+
+def candidate_words(text: str, min_length: int = 4) -> list[str]:
+    """Return the lowercased words of ``text`` worth scoring, in order, without repeats."""
+    return [token.word for token in candidate_tokens(text, min_length)]
+
+
+@dataclass(frozen=True)
+class WordScore:
+    """Frequency of a word and of its lemma; ``score`` is the higher of the two."""
+
+    word: str
+    zipf: float
+    lemma: str
+    lemma_zipf: float
+
+    @property
+    def score(self) -> float:
+        """Frequency used against ``max_zipf``."""
+        return max(self.zipf, self.lemma_zipf)
+
+    @property
+    def lemmatized(self) -> bool:
+        """Whether the lemmatizer changed the word."""
+        return self.lemma != self.word
 
 
 def zipf(word: str) -> float:
@@ -66,7 +108,24 @@ def zipf(word: str) -> float:
     return zipf_frequency(word, "fr")
 
 
+def lemmatize(word: str) -> str:
+    """Return the French lemma of a word with ``simplemma``, or the word itself when unknown.
+
+    Inflected forms of ordinary words are rarer than their lemma in the lexicon
+    (« précisées » 2.95 against « préciser » 4.36), so the lemma frequency is needed
+    to recognize them as ordinary. Medical words unknown to the lemmatizer stay as
+    they are and keep their own frequency.
+    """
+    return simplemma.lemmatize(word, lang="fr").lower()
+
+
+def score_word(word: str) -> WordScore:
+    """Score a word with the frequency of its form and of its lemma."""
+    lemma = lemmatize(word)
+    return WordScore(word, zipf(word), lemma, zipf(lemma) if lemma != word else zipf(word))
+
+
 def rare_words(text: str, settings: RaritySettings) -> list[tuple[str, float]]:
-    """Return the candidate words of ``text`` whose frequency is at most ``max_zipf``."""
-    scored = ((word, zipf(word)) for word in candidate_words(text, settings.min_length))
-    return [(word, score) for word, score in scored if score <= settings.max_zipf]
+    """Return the candidate words of ``text`` whose score is at most ``max_zipf``."""
+    scored = (score_word(word) for word in candidate_words(text, settings.min_length))
+    return [(ws.word, ws.score) for ws in scored if ws.score <= settings.max_zipf]

@@ -49,7 +49,7 @@ words:
   # Normalized nomenclatures to read (default: every configured nomenclature).
   sources: [cim10, orphanet]
   # Name of the output list, written to words/<output>.jsonl.
-  output: medical
+  output: words
   # A word is rare when its Zipf frequency in French is at most this value
   # (7 = extremely common, 4 = common, 2 = rare, 0 = unknown to the lexicon).
   max_zipf: 3.0
@@ -73,12 +73,45 @@ llm:
   extra_body: {}
 
 sentences:
+  # Name of the sentence set, written to sentences/<output>.jsonl.
+  output: sentences
   domain: pratique clinique hospitalière
   # Number of different sentences requested for each term.
   per_word: 1
   min_words: 8
   max_words: 20
   max_attempts: 4
+  # Every sentence draws one entry of each list from its ID (deterministic), so that
+  # the LLM does not write the same sentence shape every time. Edit freely; an empty
+  # list adds no constraint.
+  scenes:
+    - compte rendu d'hospitalisation dicté
+    - courrier au médecin traitant
+    - transmission infirmière
+    - observation aux urgences
+    - consultation de suivi
+    - staff ou réunion de concertation
+    - échange oral entre deux soignants
+    - compte rendu d'examen (imagerie, biologie, anatomopathologie)
+    - entretien avec le patient ou sa famille
+  forms:
+    - affirmation d'un diagnostic
+    - hypothèse à confirmer
+    - diagnostic écarté ou absent
+    - antécédent ancien
+    - question posée à un confrère
+    - consigne de traitement ou de surveillance
+    - résultat d'examen
+    - évolution sous traitement
+  subjects:
+    - le patient
+    - la patiente
+    - l'enfant
+    - une femme de soixante ans
+    - un homme jeune
+    - je, le soignant qui parle
+    - nous, l'équipe
+    - personne en particulier, formulation impersonnelle
 
 tts:
   # Fixed model: Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign.

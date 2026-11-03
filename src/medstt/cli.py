@@ -18,7 +18,14 @@ from medstt.eval.evaluate import evaluate_model
 from medstt.io import read_records
 from medstt.nomenclatures.config import parse_nomenclatures
 from medstt.nomenclatures.normalize import import_nomenclature
-from medstt.sentences.generate import USER_PROMPT, GenerationSettings, generate_sentences
+from medstt.sentences.generate import (
+    DEFAULT_FORMS,
+    DEFAULT_SCENES,
+    DEFAULT_SUBJECTS,
+    USER_PROMPT,
+    GenerationSettings,
+    generate_sentences,
+)
 from medstt.words.build import build_words
 from medstt.words.rarity import RaritySettings
 from medstt.workspace import Workspace, WorkspaceError, pick
@@ -199,7 +206,7 @@ def words_build(
         max_zipf=float(pick(max_zipf, conf, "max_zipf", 3.0)),
         min_length=int(pick(min_length, conf, "min_length", 4)),
     )
-    output_path = _output_path(ws, pick(output, conf, "output", "medical"), "words", ".jsonl")
+    output_path = _output_path(ws, pick(output, conf, "output", "words"), "words", ".jsonl")
     count, build_stats = build_words(paths, output_path, settings, limit=limit)
     if stats:
         typer.echo(build_stats.report(settings.max_zipf))
@@ -212,11 +219,18 @@ def words_build(
 @sentences_app.command("generate")
 def sentences_generate(
     words: Annotated[
-        Path, typer.Argument(help="Word list: txt/csv/tsv/jsonl/parquet (in words/).")
-    ],
+        Path | None,
+        typer.Argument(
+            help="Word list: txt/csv/tsv/jsonl/parquet (in words/); "
+            "default: words/<words.output>.jsonl."
+        ),
+    ] = None,
     output: Annotated[
-        str, typer.Option("--output", "-o", help="Sentence set name (in sentences/).")
-    ],
+        str | None,
+        typer.Option(
+            "--output", "-o", help="Sentence set name (in sentences/); default: sentences.output."
+        ),
+    ] = None,
     column: Annotated[
         str, typer.Option(help="Word column (txt files: one word per line).")
     ] = "word",
@@ -243,7 +257,10 @@ def sentences_generate(
     """Generate the configured number of French sentences per term; resume by ID."""
     ws = _open(workdir)
     llm, conf = ws.section("llm"), ws.section("sentences")
+    if words is None:
+        words = Path(ws.section("words").get("output", "words")).with_suffix(".jsonl")
     words_path = ws.resolve(words, "words")
+    output = pick(output, conf, "output", "sentences")
     records = read_records(words_path, txt_column=column)
     if limit is not None:
         records = records[:limit]
@@ -277,6 +294,9 @@ def sentences_generate(
         per_word=sentences_per_word,
         user_prompt=prompt_file.read_text(encoding="utf-8") if prompt_file else USER_PROMPT,
         extra_body=llm.get("extra_body") or None,
+        scenes=tuple(conf.get("scenes", DEFAULT_SCENES) or ()),
+        forms=tuple(conf.get("forms", DEFAULT_FORMS) or ()),
+        subjects=tuple(conf.get("subjects", DEFAULT_SUBJECTS) or ()),
     )
     if not settings.base_url or not settings.model:
         raise typer.BadParameter("Set llm.base_url and llm.model in medstt.yaml or via options.")
